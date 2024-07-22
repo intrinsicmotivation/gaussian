@@ -1,66 +1,16 @@
-## Foundry
+## Gaussian
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+> Implement a maximally optimized gaussian CDF on the EVM for arbitrary 18 decimal fixed point parameters x, μ, σ. Assume -1e20 ≤ μ ≤ 1e20 and 0 < σ ≤ 1e19. Should have an error less than 1e-8 vs errcw/gaussian for all x on the interval [-1e23, 1e23].
 
-Foundry consists of:
+## Test
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+forge test --ffi
 ```
 
-### Test
+## Notes
 
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- I used fuzz testing + forge FFI to call the actual library to test correctness.
+- I didn't have time to make it work for all inputs; it overflows on some. It might be possible to fix by implementing bigint mul. Although, the input space seems extremely large so I'm not sure it's even feasible to return a correct result for all inputs.
+- I used the exact algorithms from errcw/gaussian to minimize error to that library. There is likely a much more efficient algorithm for gaussian CDF in general but I didn't have time to research / implement and test further.
+- There's probably lots of low hanging fruit for optimization, like using unsafe math in places, Yul, better algorithms, etc.

@@ -5,24 +5,11 @@ import "forge-std/Test.sol";
 import "../src/GaussianCDF.sol";
 
 contract GaussianCDFTest is Test {
-    function testFuzzGaussianCDF(int256 x, int256 mu, int256 sigma) public view {
+    function testFuzzGaussianCDF(int256 x, int256 mu, int256 sigma) public {
         // Bound the inputs to the specified ranges
-        x = bound(x, -1e41, 1e41);
-        mu = bound(mu, -1e38, 1e38);
-        sigma = bound(sigma, 1, 1e37); // Ensure sigma is positive and within range
-        vm.assume(sigma > 0);
-        vm.assume(sigma <= 1e37);
-        vm.assume(mu >= -1e38);
-        vm.assume(mu <= 1e38);
-        vm.assume(x >= -1e38);
-        vm.assume(x <= 1e38);
-
-        assert(sigma > 0);
-        assert(sigma <= 1e37);
-        assert(mu >= -1e38);
-        assert(mu <= 1e38);
-        assert(x >= -1e38);
-        assert(x <= 1e38);
+        x = bound(x, -1e23, 1e23);
+        mu = bound(mu, -1e20, 1e20);
+        sigma = bound(sigma, 1, 1e19);
         console.log("x", x);
         console.log("mu", mu);
         console.log("sigma", sigma);
@@ -30,35 +17,30 @@ contract GaussianCDFTest is Test {
         // Call the gaussianCDF function
         int256 result = GaussianCDF.cdf(x, mu, sigma);
 
-        // Basic sanity checks
-        assertTrue(result >= 0 && result <= 1e18, "CDF should be between 0 and 1");
-
-        // // Check symmetry property: CDF(-x) = 1 - CDF(x) for standard normal distribution
-        // if (mu == 0 && sigma == 1e18) {
-        //     // 1e18 represents 1.0 in our fixed-point representation
-        //     int256 resultNegX = GaussianCDF.gaussianCDF(-x, mu, sigma);
-        //     int256 expectedSum = 1e18; // 1.0 in fixed-point
-        //     int256 actualSum = result + resultNegX;
-        //     assertApproxEqAbs(actualSum, expectedSum, 1e10, "Symmetry property violated");
-        // }
-
-        // Additional property checks can be added here
+        int256 expectedResult = getExpectedCDF(x, mu, sigma);
+        assertApproxEqAbs(result, expectedResult, 1e8, "Expected result should match within 1e-8");
     }
 
     // Helper function to test specific cases
     function testSpecificCases() public {
-        int256 result = GaussianCDF.cdf(1e18, 0, 1e18);
-        console.log(result);
-        // Test the median (should be very close to 0.5)
-        // int256 result = gaussianCDF.gaussianCDF(0, 0, 1e18);
-        // assertApproxEqAbs(result, 5e17, 1e10, "Median should be close to 0.5");
+        testFuzzGaussianCDF(1e18, 0, 1e18);
+        testFuzzGaussianCDF(0, 0, 1e18);
+        testFuzzGaussianCDF(1e23, 0, 1e18);
+        testFuzzGaussianCDF(-1e23, 0, 1e18);
+    }
 
-        // // Test a value far in the positive tail (should be very close to 1)
-        // result = gaussianCDF.gaussianCDF(1e23, 0, 1e18);
-        // assertApproxEqAbs(result, 1e18, 1e10, "Far positive value should be close to 1");
-
-        // // Test a value far in the negative tail (should be very close to 0)
-        // result = gaussianCDF.gaussianCDF(-1e23, 0, 1e18);
-        // assertApproxEqAbs(result, 0, 1e10, "Far negative value should be close to 0");
+    // Call `yarn tsx reference/main.ts x mu sigma --ffi` to get the expected result
+    function getExpectedCDF(int256 x, int256 mu, int256 sigma) public returns (int256) {
+        string[] memory args = new string[](7);
+        args[0] = "yarn";
+        args[1] = "tsx";
+        args[2] = "reference/main.ts";
+        args[3] = vm.toString(x);
+        args[4] = vm.toString(mu);
+        args[5] = vm.toString(sigma);
+        args[6] = "--ffi";
+        bytes memory res = vm.ffi(args);
+        int256 expectedResult = abi.decode(res, (int256));
+        return expectedResult;
     }
 }

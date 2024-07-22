@@ -10,9 +10,10 @@ library GaussianCDF {
     int256 constant FIXED_1 = 1e18;
     int256 constant FIXED_2 = 2e18;
 
-    int256 constant SQRT_2 = 141421356237309504880168872420969808; // sqrt(2) 35 decimals
+    int256 constant SQRT_2 = 141421356237309504880168872420969808; // sqrt(2) with 35 decimals
 
     function cdf(int256 x, int256 mu, int256 sigma) internal view returns (int256) {
+        // https://github.com/errcw/gaussian/blob/master/lib/gaussian.js#L55
         // function cdf(x: number, mu: number, sigma: number) {
         //   return 0.5 * erfc(-(x - mu) / (sigma * Math.sqrt(2)));
         // }
@@ -36,6 +37,7 @@ library GaussianCDF {
     int256 constant a9 = 170872770000000000;
 
     function erfc(int256 x) public pure returns (int256) {
+        // https://github.com/errcw/gaussian/blob/master/lib/gaussian.js#L7
         // var z = Math.abs(x);
         // var t = 1 / (1 + z / 2);
         // var r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 +
@@ -44,22 +46,13 @@ library GaussianCDF {
         //         t * (-0.82215223 + t * 0.17087277)))))))))
         // return x >= 0 ? r : 2 - r;
 
-        console.log("erfc1");
         int256 z = x >= 0 ? x : -x;
-        console.log("erfc2");
         int256 t = FIXED_1.sDivWad(FIXED_1 + z / 2);
-        console.log("erfc3");
-        console.log("z", z);
-        console.log("t", t);
-        int256 z_test = 707106781186547524;
-        console.log("int256 max", type(int256).max);
-        console.log("z_test", z_test);
-        console.log("z * z", z_test * z_test);
-        int256 z_2 = -(z.sMulWad(z));
-        // int256 z_2 = -(z.powWad(FIXED_2));
-        console.log("z_2", z_2);
+        // Decrease precision to avoid overflow
+        int256 SCALE = 1e1;
+        int256 z_2 = -((z / SCALE) * (z / SCALE) * (SCALE ** 2) / FIXED_1);
         int256 inner = (
-            (-z).sMulWad(z) - c
+            z_2 - c
                 + t.sMulWad(
                     a1
                         + t.sMulWad(
@@ -71,9 +64,7 @@ library GaussianCDF {
                         )
                 )
         );
-        console.log("erfc4");
         int256 r = t.sMulWad(inner.expWad());
-        console.log("erfc5");
         return x >= 0 ? r : FIXED_2 - r;
     }
 }
